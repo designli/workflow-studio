@@ -1,0 +1,46 @@
+# Workflow Studio
+
+A Visio-style workflow builder for Designli. Draw processes with the standard flowchart
+shapes, swimlanes per role, arrows with labels, pages (tabs) per diagram, and nested
+sub-processes behind any *Predefined process* shape.
+
+## Run it on your computer
+
+```sh
+cd ~/workflow-studio
+npm run dev
+```
+
+Then open http://localhost:3000 in your browser. Press `Ctrl+C` in the terminal to stop it.
+
+Your workflows are saved as files in `data/workflows/` (one JSON file each). They are
+not committed to git. Back that folder up if you care about its contents.
+
+## Using it
+
+- **Home** lists every workflow. Create, rename, duplicate or delete from there.
+- **Shapes** live in the left panel: drag one onto the canvas or click it to add one in the middle of the view.
+- **Text**: double-click a shape (or press Enter with it selected) and type. Enter finishes, Shift+Enter adds a line.
+- **Arrows**: drag from one of the four dots on a shape's edge to another shape. Double-click an arrow to label it. Arrows from a Decision get "Yes" and "No" labels automatically.
+- **Swimlanes**: add one from the top of the shape list. Double-click a lane name to rename it, drag the line between lanes to resize them, and use the right panel to add, reorder, colour or remove lanes. Dragging the label column moves the whole swimlane with everything inside it.
+- **Sub-processes**: double-click a *Predefined process* to open the diagram inside it. The breadcrumb at the top (and the *Up* button) takes you back.
+- **Pages**: tabs at the bottom. The arrow on the active tab opens rename, reorder and delete.
+- **Canvas**: scroll to pan, Ctrl + scroll to zoom, hold Space (or pick the hand tool) to drag the canvas. Drag on empty space to select several shapes.
+- **Keyboard**: Delete removes, Ctrl+Z / Ctrl+Shift+Z undo and redo, Ctrl+C / Ctrl+V copy and paste, Ctrl+D duplicate, Ctrl+A select all, arrow keys nudge.
+- **Export**: the download button in the toolbar saves the current page as a PNG.
+
+Everything saves automatically; the top-right corner shows the save state.
+
+## For developers
+
+- Next.js 16 (App Router, TypeScript, Tailwind 4), React Flow 12 (`@xyflow/react`), zustand + zundo for state and undo, dagre for auto-layout, html-to-image for export.
+- `src/lib/types.ts` is the document model: a workflow is a tree of diagrams, each diagram has pages, each page holds nodes and edges.
+- `src/lib/storage.ts` is the only module that touches persistence. The hosted version will replace it with a database-backed implementation with the same function signatures.
+- `npm run lint`, `npx tsc --noEmit`, `npm run build`.
+- End-to-end smoke test: `npx playwright test` (needs `npx playwright install chromium`; on a bare WSL Ubuntu, Chromium also needs `libnss3`, `libnspr4` and `libasound2`).
+
+## Not in this version (planned)
+
+1. **Sign-in with Designli Google accounts** (`designli.co` only), the same approach as HRIS: Google Identity Services button, server-side `verifyIdToken`, `hd` claim check. `createdBy` / `updatedBy` fields will be added then.
+2. **GitHub repo** `designli/workflow-studio` and **Vercel** hosting on Diego's account, with **Neon Postgres** from the Vercel Marketplace replacing the JSON files.
+3. Nice-to-haves: vertical swimlanes, SVG/PDF export, comments.

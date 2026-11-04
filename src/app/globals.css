@@ -1,0 +1,81 @@
+@import "tailwindcss";
+@import "../styles/theme/designli.css";
+@import "../styles/theme/fonts.css";
+@import "@xyflow/react/dist/style.css";
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-family-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Canvas look: neutral, like the reference, independent of light/dark chrome */
+.ws-canvas {
+  --ws-surface: #fafafa;
+  --ws-dot: #d4d4d4;
+  --ws-stroke: #6b6b6b;
+  background: var(--ws-surface);
+}
+.ws-canvas .react-flow__attribution {
+  display: none;
+}
+.ws-canvas .react-flow__node {
+  font-family: var(--font-family-body);
+}
+.ws-canvas .react-flow__handle {
+  width: 10px;
+  height: 10px;
+  background: #ffffff;
+  border: 2px solid var(--brand-coral);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.ws-canvas .react-flow__node:hover .react-flow__handle,
+.ws-canvas .react-flow__node.selected .react-flow__handle,
+.ws-canvas.connecting .react-flow__handle {
+  opacity: 1;
+}
+.ws-canvas .react-flow__resize-control.handle {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: #ffffff;
+  border: 1.5px solid var(--brand-coral);
+}
+.ws-canvas .react-flow__resize-control.line {
+  border-color: var(--brand-coral);
+}
+.ws-canvas .react-flow__edge-path {
+  stroke: var(--ws-stroke);
+  stroke-width: 2;
+}
+.ws-canvas .react-flow__edge.selected .react-flow__edge-path,
+.ws-canvas .react-flow__edge:focus .react-flow__edge-path {
+  stroke: var(--brand-coral);
+  stroke-width: 2.5;
+}
+.ws-canvas .react-flow__connection-path {
+  stroke: var(--brand-coral);
+  stroke-width: 2;
+}
+.ws-canvas .react-flow__minimap {
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+}
+.ws-canvas .react-flow__controls {
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgb(14 16 52 / 0.08);
+}
+.ws-canvas.exporting .react-flow__handle,
+.ws-canvas.exporting .react-flow__resize-control,
+.ws-canvas.exporting .react-flow__minimap,
+.ws-canvas.exporting .react-flow__controls {
+  display: none;
+}
