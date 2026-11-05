@@ -13,8 +13,9 @@ npm run dev
 
 Then open http://localhost:3000 in your browser. Press `Ctrl+C` in the terminal to stop it.
 
-Your workflows are saved as files in `data/workflows/` (one JSON file each). They are
-not committed to git. Back that folder up if you care about its contents.
+On your computer, workflows are saved as files in `data/workflows/` (one JSON file each).
+They are not committed to git. The hosted version on Vercel keeps them in a Postgres
+database instead (see "Hosting" below).
 
 ## Using it
 
@@ -35,12 +36,17 @@ Everything saves automatically; the top-right corner shows the save state.
 
 - Next.js 16 (App Router, TypeScript, Tailwind 4), React Flow 12 (`@xyflow/react`), zustand + zundo for state and undo, dagre for auto-layout, html-to-image for export.
 - `src/lib/types.ts` is the document model: a workflow is a tree of diagrams, each diagram has pages, each page holds nodes and edges.
-- `src/lib/storage.ts` is the only module that touches persistence. The hosted version will replace it with a database-backed implementation with the same function signatures.
+- `src/lib/storage.ts` is the only module the app talks to for persistence. It picks a backend from `src/lib/storage/`: Postgres (`postgres.ts`, Neon serverless driver) when `DATABASE_URL` is set, JSON files (`file.ts`) otherwise. The table is created on first use, no migration step.
 - `npm run lint`, `npx tsc --noEmit`, `npm run build`.
 - End-to-end smoke test: `npx playwright test` (needs `npx playwright install chromium`; on a bare WSL Ubuntu, Chromium also needs `libnss3`, `libnspr4` and `libasound2`).
 
+## Hosting
+
+- Code: GitHub `designli/workflow-studio`. Every push to `main` deploys to production on Vercel.
+- Vercel project `workflow-studio` on Diego Morales' Vercel account, with a **Neon Postgres** database from the Vercel Marketplace. The integration sets `DATABASE_URL` on the project; nothing else is needed.
+- To run the hosted database locally: `vercel env pull .env.local`, then `npm run dev`.
+
 ## Not in this version (planned)
 
-1. **Sign-in with Designli Google accounts** (`designli.co` only), the same approach as HRIS: Google Identity Services button, server-side `verifyIdToken`, `hd` claim check. `createdBy` / `updatedBy` fields will be added then.
-2. **GitHub repo** `designli/workflow-studio` and **Vercel** hosting on Diego's account, with **Neon Postgres** from the Vercel Marketplace replacing the JSON files.
-3. Nice-to-haves: vertical swimlanes, SVG/PDF export, comments.
+1. **Sign-in with Designli Google accounts** (`designli.co` only), the same approach as HRIS: Google Identity Services button, server-side `verifyIdToken`, `hd` claim check. `createdBy` / `updatedBy` fields will be added then. Until then the hosted URL is open to anyone who has it.
+2. Nice-to-haves: vertical swimlanes, SVG/PDF export, comments.
