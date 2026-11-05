@@ -25,7 +25,7 @@ database instead (see "Hosting" below).
 - **Arrows**: drag from one of the four dots on a shape's edge to another shape. Double-click an arrow to label it. Arrows from a Decision get "Yes" and "No" labels automatically.
 - **Swimlanes**: add one from the top of the shape list. Double-click a lane name to rename it, drag the line between lanes to resize them, and use the right panel to add, reorder, colour or remove lanes. Dragging the label column moves the whole swimlane with everything inside it.
 - **Sub-processes**: double-click a *Predefined process* to open the diagram inside it. The breadcrumb at the top (and the *Up* button) takes you back.
-- **Pages**: tabs at the bottom. The arrow on the active tab opens rename, reorder and delete.
+- **Tabs** at the bottom, like sheets in a spreadsheet: the main process first, then every sub-process as its own tab (indented when nested). Click a tab to jump there. The arrow on the active tab opens rename and delete; "+ Page" adds an extra page to the process you are looking at.
 - **Canvas**: scroll to pan, Ctrl + scroll to zoom, hold Space (or pick the hand tool) to drag the canvas. Drag on empty space to select several shapes.
 - **Keyboard**: Delete removes, Ctrl+Z / Ctrl+Shift+Z undo and redo, Ctrl+C / Ctrl+V copy and paste, Ctrl+D duplicate, Ctrl+A select all, arrow keys nudge.
 - **Export**: the download button in the toolbar saves the current page as a PNG.

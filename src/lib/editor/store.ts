@@ -12,7 +12,7 @@ import {
   type XYPosition,
 } from "@xyflow/react";
 import { newId } from "@/lib/ids";
-import { newDiagram, newPage, removeDiagramSubtree } from "@/lib/document";
+import { diagramSubtree, newDiagram, newPage, removeDiagramSubtree } from "@/lib/document";
 import type {
   EdgeData,
   Page,
@@ -157,6 +157,10 @@ export type EditorState = {
   movePage: (pageId: string, dir: -1 | 1) => void;
   deletePage: (pageId: string) => void;
   renameWorkflow: (name: string) => void;
+  /** Rename a sub-process: its diagram and the shape that owns it. */
+  renameDiagram: (diagramId: string, name: string) => void;
+  /** Remove a sub-process (and anything nested in it) and unlink its shape. */
+  deleteSubDiagram: (diagramId: string) => void;
 
   setTool: (tool: Tool) => void;
   setEditing: (id: string | null) => void;
@@ -521,6 +525,57 @@ export const useEditor = create<EditorState>()(
           if (!clean) return;
           set((s) => ({ workflow: { ...s.workflow, name: clean } }));
           bump();
+        },
+        renameDiagram: (diagramId, name) => {
+          const clean = name.trim();
+          if (!clean) return;
+          const wf = get().commitPage();
+          const d = wf.diagrams[diagramId];
+          if (!d) return;
+          if (!d.parentDiagramId) {
+            get().renameWorkflow(clean);
+            return;
+          }
+          const next: Workflow = JSON.parse(JSON.stringify(wf));
+          next.diagrams[diagramId].name = clean;
+          const page = next.diagrams[d.parentDiagramId]?.pages.find((p) => p.id === d.parentPageId);
+          const owner = page?.nodes.find((n) => n.id === d.parentNodeId);
+          if (owner && owner.data.kind === "shape") owner.data.label = clean;
+          set({ workflow: next });
+          const s = get();
+          if (s.diagramId === d.parentDiagramId && s.pageId === d.parentPageId) {
+            set({
+              nodes: s.nodes.map((n) =>
+                n.id === d.parentNodeId && n.type === "shape" ? { ...n, data: { ...n.data, label: clean } } : n,
+              ),
+            });
+          }
+          bump();
+        },
+        deleteSubDiagram: (diagramId) => {
+          const wf = get().commitPage();
+          const d = wf.diagrams[diagramId];
+          if (!d || !d.parentDiagramId) return;
+          const gone = new Set(diagramSubtree(wf, diagramId));
+          const next: Workflow = JSON.parse(JSON.stringify(wf));
+          removeDiagramSubtree(next, diagramId);
+          const page = next.diagrams[d.parentDiagramId]?.pages.find((p) => p.id === d.parentPageId);
+          const owner = page?.nodes.find((n) => n.id === d.parentNodeId);
+          if (owner && owner.data.kind === "shape") delete owner.data.subDiagramId;
+          set({ workflow: next });
+          const s = get();
+          if (s.diagramId === d.parentDiagramId && s.pageId === d.parentPageId) {
+            set({
+              nodes: s.nodes.map((n) => {
+                if (n.id !== d.parentNodeId || n.type !== "shape") return n;
+                const data = { ...n.data };
+                delete data.subDiagramId;
+                return { ...n, data };
+              }),
+            });
+          }
+          bump();
+          if (gone.has(s.diagramId)) get().goTo(d.parentDiagramId, d.parentPageId ?? undefined);
         },
 
         setTool: (tool) => set({ tool }),

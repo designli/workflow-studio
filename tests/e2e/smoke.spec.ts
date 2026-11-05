@@ -99,13 +99,20 @@ test.describe.serial("workflow studio smoke", () => {
     await page.keyboard.press("Enter");
     await expect(page.locator(".react-flow__node")).toHaveCount(3);
     await page.locator(".react-flow__node", { hasText: "Onboarding" }).dblclick();
-    await expect(page.getByText("Onboarding", { exact: true })).toBeVisible();
+    // The sub-process shows up in the breadcrumb and as its own tab at the bottom.
+    await expect(page.getByText("Onboarding", { exact: true }).first()).toBeVisible();
+    await expect(page.getByTitle("Sub-process: Onboarding")).toBeVisible();
     await expect(page.locator(".react-flow__node")).toHaveCount(0);
     await expect(page).toHaveURL(/d=/);
     await page.getByRole("button", { name: "Process", exact: true }).click();
     await page.keyboard.type("Inside step");
     await page.keyboard.press("Enter");
     await page.getByRole("button", { name: "Up", exact: true }).click();
+    await expect(page.locator(".react-flow__node")).toHaveCount(3);
+    // Tabs switch between the main process and the sub-process.
+    await page.getByTitle("Sub-process: Onboarding").click();
+    await expect(page.locator(".react-flow__node", { hasText: "Inside step" })).toBeVisible();
+    await page.getByTitle("Page 1").click();
     await expect(page.locator(".react-flow__node")).toHaveCount(3);
     await expect(page.getByText(/^Saved/)).toBeVisible({ timeout: 15_000 });
     await page.reload();
