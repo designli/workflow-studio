@@ -14,8 +14,11 @@ import {
   type Edge,
   type IsValidConnection,
   type Node,
+  type NodeChange,
   type OnNodeDrag,
   type OnReconnect,
+  useViewport,
+  ViewportPortal,
 } from "@xyflow/react";
 import { ShapeNode } from "./nodes/ShapeNode";
 import { SwimlaneNode } from "./nodes/SwimlaneNode";
@@ -23,7 +26,8 @@ import { FlowEdge } from "./edges/FlowEdge";
 import { beginInteraction, endInteraction, useEditor, type FlowEdge as FlowEdgeType, type FlowNode } from "@/lib/editor/store";
 import type { ShapeKind } from "@/lib/types";
 import { SHAPE_BY_KIND } from "@/lib/editor/shapes";
-import { centerInside, nodeRect } from "@/lib/editor/swimlane";
+import { centerInside, laneTop, nodeRect } from "@/lib/editor/swimlane";
+import { rectLines, snapRect, type Guides } from "@/lib/editor/guides";
 
 const nodeTypes = { shape: ShapeNode, swimlane: SwimlaneNode };
 const edgeTypes = { flow: FlowEdge };
@@ -33,6 +37,32 @@ const defaultEdgeOptions = {
 };
 
 export const DRAG_MIME = "application/x-workflow-shape";
+
+const NO_GUIDES: Guides = { v: null, h: null };
+
+/** Coral alignment lines drawn in flow coordinates while a shape is dragged. */
+function GuideLines({ guides }: { guides: Guides }) {
+  const { zoom } = useViewport();
+  if (guides.v === null && guides.h === null) return null;
+  const thickness = 1 / zoom;
+  const span = 100000;
+  return (
+    <ViewportPortal>
+      {guides.v !== null && (
+        <div
+          className="pointer-events-none absolute bg-brand-coral"
+          style={{ left: guides.v, top: -span, width: thickness, height: span * 2, opacity: 0.9 }}
+        />
+      )}
+      {guides.h !== null && (
+        <div
+          className="pointer-events-none absolute bg-brand-coral"
+          style={{ top: guides.h, left: -span, height: thickness, width: span * 2, opacity: 0.9 }}
+        />
+      )}
+    </ViewportPortal>
+  );
+}
 
 export function Canvas({ wrapperRef }: { wrapperRef: React.RefObject<HTMLDivElement | null> }) {
   const nodes = useEditor((s) => s.nodes);
@@ -47,6 +77,53 @@ export function Canvas({ wrapperRef }: { wrapperRef: React.RefObject<HTMLDivElem
   const [connecting, setConnecting] = React.useState(false);
   const reconnectOk = React.useRef(true);
   const laneDrag = React.useRef<{ id: string; last: { x: number; y: number }; inside: Set<string> } | null>(null);
+  const [guides, setGuides] = React.useState<Guides>(NO_GUIDES);
+  // Last snapped position: the drag handler's final event carries its own
+  // unsnapped position, so we put the snapped one back.
+  const snapped = React.useRef<{ id: string; x: number; y: number } | null>(null);
+
+  // Snap a single dragged shape to the other shapes' edges/centers and lane centers.
+  const handleNodesChange = React.useCallback(
+    (changes: NodeChange<FlowNode>[]) => {
+      const moving = changes.filter((c) => c.type === "position" && c.dragging && c.position);
+      if (moving.length === 1 && !laneDrag.current) {
+        const c = moving[0] as Extract<NodeChange<FlowNode>, { type: "position" }>;
+        const s = useEditor.getState();
+        const node = s.nodes.find((n) => n.id === c.id);
+        if (node && node.type === "shape" && c.position) {
+          const w = node.measured?.width ?? node.width ?? 0;
+          const h = node.measured?.height ?? node.height ?? 0;
+          const xs: number[] = [];
+          const ys: number[] = [];
+          for (const o of s.nodes) {
+            if (o.id === node.id || o.selected) continue;
+            if (o.type === "shape") {
+              const lines = rectLines({ x: o.position.x, y: o.position.y, w: o.measured?.width ?? o.width ?? 0, h: o.measured?.height ?? o.height ?? 0 });
+              xs.push(...lines.x);
+              ys.push(...lines.y);
+            } else if (o.type === "swimlane") {
+              o.data.lanes.forEach((lane, i) => ys.push(o.position.y + laneTop(o.data, i) + lane.size / 2));
+            }
+          }
+          const res = snapRect({ x: c.position.x, y: c.position.y, w, h }, xs, ys);
+          setGuides(res.guides);
+          snapped.current = { id: c.id, x: res.x, y: res.y };
+          changes = changes.map((ch) => (ch === c ? { ...c, position: { x: res.x, y: res.y } } : ch));
+        }
+      } else if (changes.some((c) => c.type === "position" && !c.dragging)) {
+        const last = snapped.current;
+        snapped.current = null;
+        setGuides(NO_GUIDES);
+        if (last) {
+          changes = changes.map((ch) =>
+            ch.type === "position" && !ch.dragging && ch.id === last.id ? { ...ch, position: { x: last.x, y: last.y } } : ch,
+          );
+        }
+      }
+      onNodesChange(changes);
+    },
+    [onNodesChange],
+  );
 
   React.useEffect(() => {
     const t = setTimeout(() => fitView({ padding: 0.2, duration: 0, maxZoom: 1.25 }), 30);
@@ -120,6 +197,7 @@ export function Canvas({ wrapperRef }: { wrapperRef: React.RefObject<HTMLDivElem
   };
   const onNodeDragStop = () => {
     laneDrag.current = null;
+    setGuides(NO_GUIDES);
     endInteraction();
     useEditor.getState().markDirty();
   };
@@ -147,7 +225,7 @@ export function Canvas({ wrapperRef }: { wrapperRef: React.RefObject<HTMLDivElem
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
-        onNodesChange={onNodesChange}
+        onNodesChange={handleNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onConnectStart={() => setConnecting(true)}
@@ -196,6 +274,7 @@ export function Canvas({ wrapperRef }: { wrapperRef: React.RefObject<HTMLDivElem
         <Background variant={BackgroundVariant.Dots} gap={20} size={1.5} color="#d4d4d4" />
         <MiniMap pannable zoomable nodeColor={(n) => (n.type === "swimlane" ? "#ededed" : "#c9c9c9")} />
         <Controls showInteractive={false} position="bottom-right" />
+        <GuideLines guides={guides} />
       </ReactFlow>
     </div>
   );

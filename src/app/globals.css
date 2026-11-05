@@ -73,6 +73,10 @@ body {
   overflow: hidden;
   box-shadow: 0 2px 6px rgb(14 16 52 / 0.08);
 }
+.ws-canvas.drop-target .react-flow__pane {
+  box-shadow: inset 0 0 0 3px var(--brand-coral);
+}
+.ws-canvas.exporting .ws-lane-add,
 .ws-canvas.exporting .react-flow__handle,
 .ws-canvas.exporting .react-flow__resize-control,
 .ws-canvas.exporting .react-flow__minimap,

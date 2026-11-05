@@ -1,5 +1,6 @@
 "use client";
 import * as React from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, CornerDownRight, Plus } from "lucide-react";
 import { useEditor } from "@/lib/editor/store";
 import { tabOrder } from "@/lib/document";
@@ -23,7 +24,13 @@ export function PageTabs() {
   const deletePage = useEditor((s) => s.deletePage);
   const deleteSubDiagram = useEditor((s) => s.deleteSubDiagram);
   const [renaming, setRenaming] = React.useState<string | null>(null);
-  const [menu, setMenu] = React.useState<string | null>(null);
+  // The menu is rendered in a portal (fixed, above the tab) so the scrolling
+  // tab strip cannot clip it.
+  const [menu, setMenu] = React.useState<{ key: string; left: number; bottom: number } | null>(null);
+  const openMenu = (key: string, anchor: HTMLElement) => {
+    const r = anchor.getBoundingClientRect();
+    setMenu({ key, left: r.left, bottom: window.innerHeight - r.top + 4 });
+  };
   const tabs = React.useMemo(() => tabOrder(workflow), [workflow]);
 
   React.useEffect(() => {
@@ -90,11 +97,17 @@ export function PageTabs() {
               <button
                 type="button"
                 title={isRoot ? page.name : `Sub-process: ${diagram.name}`}
+                aria-label={label}
                 onClick={() => !active && goTo(diagram.id, page.id)}
                 onDoubleClick={() => setRenaming(key)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  if (!active) goTo(diagram.id, page.id);
+                  openMenu(key, e.currentTarget);
+                }}
                 style={{ marginLeft: depth > 1 ? (depth - 1) * 6 : 0 }}
                 className={cn(
-                  "my-1 flex items-center gap-1 rounded-md px-3 text-sm",
+                  "group my-1 flex items-center gap-1 rounded-md px-3 text-sm",
                   active ? "bg-brand-navy text-white" : "text-foreground hover:bg-muted",
                 )}
               >
@@ -110,25 +123,31 @@ export function PageTabs() {
                 ) : (
                   <span className="max-w-48 truncate">{label}</span>
                 )}
-                {active && (
-                  <span
-                    role="button"
-                    aria-label="Tab options"
-                    onMouseDown={(e) => e.stopPropagation()}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setMenu(menu === key ? null : key);
-                    }}
-                    className="-mr-1 rounded p-0.5 hover:bg-white/20"
-                  >
-                    <ChevronDown size={14} />
-                  </span>
-                )}
+                <span
+                  role="button"
+                  aria-label="Tab options"
+                  title="Rename, delete…"
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!active) goTo(diagram.id, page.id);
+                    if (menu?.key === key) setMenu(null);
+                    else openMenu(key, e.currentTarget.closest("button") ?? e.currentTarget);
+                  }}
+                  className={cn(
+                    "-mr-1 rounded p-0.5",
+                    active ? "hover:bg-white/20" : "opacity-0 group-hover:opacity-100 hover:bg-black/10",
+                  )}
+                >
+                  <ChevronDown size={14} />
+                </span>
               </button>
-              {menu === key && (
+              {menu?.key === key &&
+                createPortal(
                 <div
                   onMouseDown={(e) => e.stopPropagation()}
-                  className="absolute bottom-full left-0 z-30 mb-1 w-44 rounded-lg border border-border bg-card py-1 text-sm shadow-md"
+                  style={{ left: menu.left, bottom: menu.bottom }}
+                  className="fixed z-50 w-44 rounded-lg border border-border bg-card py-1 text-sm shadow-md"
                 >
                   {menuItems.map((item) => (
                     <button
@@ -147,7 +166,8 @@ export function PageTabs() {
                       {item.label}
                     </button>
                   ))}
-                </div>
+                </div>,
+                document.body,
               )}
             </div>
           );

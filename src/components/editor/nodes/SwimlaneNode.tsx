@@ -3,7 +3,8 @@ import * as React from "react";
 import { NodeResizeControl, ResizeControlVariant, useReactFlow, type NodeProps } from "@xyflow/react";
 import { beginInteraction, endInteraction, useEditor, type SwimlaneFlowNode } from "@/lib/editor/store";
 import { SWIMLANE_DEFAULT } from "@/lib/editor/shapes";
-import { TITLE_HEIGHT, swimlaneHeight } from "@/lib/editor/swimlane";
+import { TITLE_HEIGHT, newLane, swimlaneHeight } from "@/lib/editor/swimlane";
+import { Plus } from "lucide-react";
 import { TextEditor } from "./TextEditor";
 
 const STROKE = "#6b6b6b";
@@ -56,10 +57,8 @@ export const SwimlaneNode = React.memo(function SwimlaneNode({ id, data, selecte
           <NodeResizeControl position="right" variant={ResizeControlVariant.Line} minWidth={320} onResizeStart={beginInteraction} onResizeEnd={endInteraction} style={{ pointerEvents: "all" }} />
         </>
       )}
-      <div
-        className="absolute inset-0 rounded-md"
-        style={{ border: `2px solid ${selected ? "var(--brand-coral)" : STROKE}`, background: "#ffffff" }}
-      />
+      {/* white sheet behind the lanes */}
+      <div className="absolute inset-0 rounded-md" style={{ background: "#ffffff" }} />
       {data.title !== undefined && data.title !== null && (
         <div
           className="lane-drag-handle absolute left-0 right-0 flex cursor-grab items-center justify-center text-[15px] font-semibold active:cursor-grabbing"
@@ -142,6 +141,26 @@ export const SwimlaneNode = React.memo(function SwimlaneNode({ id, data, selecte
           )}
         </React.Fragment>
       ))}
+      {/* outer frame, painted last so every side shows the same border */}
+      <div
+        className="pointer-events-none absolute inset-0 rounded-md"
+        style={{ border: `2px solid ${selected ? "var(--brand-coral)" : STROKE}` }}
+      />
+      {/* add a lane right on the swimlane */}
+      <button
+        type="button"
+        title="Add a lane"
+        aria-label="Add a lane"
+        className="ws-lane-add nodrag nopan absolute flex h-6 w-6 items-center justify-center rounded-full border-2 bg-white text-[#6b6b6b] shadow-sm hover:border-brand-coral hover:text-brand-coral"
+        style={{ left: data.labelSize / 2 - 12, top: h - 12, borderColor: STROKE, pointerEvents: "all" }}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          updateNodeData(id, { lanes: [...data.lanes, newLane(`Lane ${data.lanes.length + 1}`)] });
+        }}
+      >
+        <Plus size={14} />
+      </button>
     </div>
   );
 });

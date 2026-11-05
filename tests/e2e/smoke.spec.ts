@@ -118,6 +118,28 @@ test.describe.serial("workflow studio smoke", () => {
     await page.reload();
     await page.locator(".react-flow__node", { hasText: "Onboarding" }).dblclick();
     await expect(page.locator(".react-flow__node", { hasText: "Inside step" })).toBeVisible();
+    // Remove the sub-process from its tab: right-click, Delete sub-process.
+    page.once("dialog", (d) => d.accept());
+    await page.getByTitle("Sub-process: Onboarding").click({ button: "right" });
+    await page.getByRole("button", { name: "Delete sub-process" }).click();
+    await expect(page.getByTitle("Sub-process: Onboarding")).toHaveCount(0);
+    await expect(page.locator(".react-flow__node")).toHaveCount(3);
+  });
+
+  test("drags a shape from the palette onto the board", async ({ page }) => {
+    await page.goto(workflowUrl);
+    await expect(page.locator(".react-flow__node")).toHaveCount(3);
+    const item = await page.getByRole("button", { name: "Decision", exact: true }).boundingBox();
+    const pane = await page.locator(".react-flow__pane").boundingBox();
+    if (!item || !pane) throw new Error("palette or pane not found");
+    await page.mouse.move(item.x + 20, item.y + 10);
+    await page.mouse.down();
+    await page.mouse.move(item.x + 120, item.y + 40, { steps: 6 });
+    await page.mouse.move(pane.x + pane.width * 0.7, pane.y + pane.height * 0.75, { steps: 10 });
+    await page.mouse.up();
+    await expect(page.locator(".react-flow__node")).toHaveCount(4);
+    await page.keyboard.press("Control+z");
+    await expect(page.locator(".react-flow__node")).toHaveCount(3);
   });
 
   test("swimlane, undo, redo and export", async ({ page }) => {
@@ -125,8 +147,13 @@ test.describe.serial("workflow studio smoke", () => {
     await page.getByRole("button", { name: "Swimlane" }).click();
     await expect(page.locator(".react-flow__node-swimlane")).toHaveCount(1);
     await expect(page.locator(".react-flow__node-swimlane")).toContainText("Lane 1");
-    await page.getByRole("button", { name: "Add lane" }).click();
+    await page.getByRole("button", { name: "Add lane", exact: true }).click();
     await expect(page.locator(".react-flow__node-swimlane")).toContainText("Lane 4");
+    await page.getByRole("button", { name: "Fit to view" }).click();
+    await page.getByRole("button", { name: "Add a lane", exact: true }).click();
+    await expect(page.locator(".react-flow__node-swimlane")).toContainText("Lane 5");
+    await page.keyboard.press("Control+z");
+    await expect(page.locator(".react-flow__node-swimlane")).not.toContainText("Lane 5");
     await page.locator(".react-flow__pane").click({ position: { x: 20, y: 20 } });
     await page.keyboard.press("Control+z");
     await expect(page.locator(".react-flow__node-swimlane")).not.toContainText("Lane 4");

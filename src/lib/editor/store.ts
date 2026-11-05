@@ -553,10 +553,15 @@ export const useEditor = create<EditorState>()(
           bump();
         },
         deleteSubDiagram: (diagramId) => {
-          const wf = get().commitPage();
+          let wf = get().commitPage();
           const d = wf.diagrams[diagramId];
           if (!d || !d.parentDiagramId) return;
           const gone = new Set(diagramSubtree(wf, diagramId));
+          // Leave the doomed diagram first, so the page we are on still exists.
+          if (gone.has(get().diagramId)) {
+            get().goTo(d.parentDiagramId, d.parentPageId ?? undefined);
+            wf = get().workflow;
+          }
           const next: Workflow = JSON.parse(JSON.stringify(wf));
           removeDiagramSubtree(next, diagramId);
           const page = next.diagrams[d.parentDiagramId]?.pages.find((p) => p.id === d.parentPageId);
@@ -575,7 +580,6 @@ export const useEditor = create<EditorState>()(
             });
           }
           bump();
-          if (gone.has(s.diagramId)) get().goTo(d.parentDiagramId, d.parentPageId ?? undefined);
         },
 
         setTool: (tool) => set({ tool }),
